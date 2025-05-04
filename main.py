@@ -128,13 +128,13 @@ def load_commands():
             else:
                 logging.warning(f"Module {module_name} has no setup function, skipping.")
 
-# Load cogs
-def load_cogs():
+# Load cogs (now async)
+async def load_cogs():
     for filename in os.listdir("./cogs"):
         if filename.endswith(".py"):
             module_name = filename[:-3]
             logging.info(f"Loading cog: {module_name}")
-            discord_client.load_extension(f"cogs.{module_name}")
+            await discord_client.load_extension(f"cogs.{module_name}")  # Now awaited
 
 @discord_client.event
 async def on_connect():
@@ -150,7 +150,7 @@ async def on_ready():
     logging.info('------')
     await discord_client.change_presence(activity=random.choice(status_rotation))
     load_commands()
-    load_cogs()
+    await load_cogs()  # Now awaited
     asyncio.create_task(rotate_status())
     asyncio.create_task(process_reaction_queue())
     asyncio.create_task(cleanup_conversation_history())
