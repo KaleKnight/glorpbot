@@ -9,9 +9,9 @@ conversation_history = {}
 MAX_HISTORY = 20
 
 class AIChat(commands.Cog):
-    def __init__(self, client, cfg):
+    def __init__(self, client):
         self.client = client
-        self.cfg = cfg
+        self.cfg = client.cfg  # Access cfg from the bot instance
         self.openai_client = self._setup_openai_client()
         self.ai_chat_lock = asyncio.Lock()
 
@@ -86,5 +86,5 @@ class AIChat(commands.Cog):
             past_history = conversation_history.get(channel_id, [])
             await self.handle_ai_chat(message, channel_id, user_message, past_history)
 
-def setup(client):
-    client.add_cog(AIChat(client, client.cfg))
+async def setup(client):
+    await client.add_cog(AIChat(client))  # Now awaited
