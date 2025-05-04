@@ -39,11 +39,47 @@ intents = discord.Intents.default()
 intents.message_content = True
 
 status_rotation = [
-    discord.Game("Glorping around"),
+    discord.Game("Glorp Theft Auto"),
     discord.Activity(type=discord.ActivityType.listening, name="Sabrina Carpenter"),
     discord.Activity(type=discord.ActivityType.watching, name="Stranger Things"),
     discord.Activity(type=discord.ActivityType.playing, name="Fortnite with Elon Musk"),
     discord.Activity(type=discord.ActivityType.listening, name="Dance Gavin Dance"),
+    discord.Activity(type=discord.ActivityType.watching, name="Game of Thrones"),
+    discord.Activity(type=discord.ActivityType.playing, name="Stardew Valley"),
+    discord.Activity(type=discord.ActivityType.listening, name="kendrick lamar"),
+    discord.Activity(type=discord.ActivityType.watching, name="Severance"),
+    discord.Activity(type=discord.ActivityType.playing, name="Minecraft"),
+    discord.Activity(type=discord.ActivityType.listening, name="Peach Pit"),
+    discord.Activity(type=discord.ActivityType.watching, name="You"),
+    discord.Activity(type=discord.ActivityType.playing, name="Tetris"),
+    discord.Activity(type=discord.ActivityType.listening, name="AC/DC"),
+    discord.Activity(type=discord.ActivityType.watching, name="Invincible"),
+    discord.Activity(type=discord.ActivityType.playing, name="Dead by Daylight"),
+    discord.Activity(type=discord.ActivityType.listening, name="Gorillaz"),
+    discord.Activity(type=discord.ActivityType.watching, name="Daredevil: Born Again"),
+    discord.Activity(type=discord.ActivityType.playing, name="Grand Theft Auto VI"),
+    discord.Activity(type=discord.ActivityType.listening, name="Taylor Swift"),
+    discord.Activity(type=discord.ActivityType.watching, name="The Bear"),
+    discord.Activity(type=discord.ActivityType.listening, name="Billie Eilish"),
+    discord.Activity(type=discord.ActivityType.watching, name="The Boys"),
+    discord.Activity(type=discord.ActivityType.playing, name="Animal Crossing: New Horizons"),
+    discord.Activity(type=discord.ActivityType.listening, name="Harry Styles - Fine Line"),
+    discord.Activity(type=discord.ActivityType.watching, name="Wednesday"),
+    discord.Activity(type=discord.ActivityType.playing, name="Subnautica"),
+    discord.Activity(type=discord.ActivityType.listening, name="Lana Del Rey"),
+    discord.Activity(type=discord.ActivityType.watching, name="Succession"),
+    discord.Activity(type=discord.ActivityType.playing, name="Portal 2"),
+    discord.Activity(type=discord.ActivityType.listening, name="Queen - Bohemian Rhapsody"),
+    discord.Activity(type=discord.ActivityType.watching, name="Arcane"),
+    discord.Activity(type=discord.ActivityType.playing, name="Overwatch 2"),
+    discord.Activity(type=discord.ActivityType.listening, name="Red Hot Chili Peppers - Californication"),
+    discord.Activity(type=discord.ActivityType.playing, name="Cyberpunk 2077"),
+    discord.Activity(type=discord.ActivityType.watching, name="The Last of Us"),
+    discord.Activity(type=discord.ActivityType.playing, name="League of Legends"),
+    discord.Activity(type=discord.ActivityType.listening, name="Metallica - Master of Puppets"),
+    discord.Activity(type=discord.ActivityType.watching, name="House of the Dragon"),
+    discord.Activity(type=discord.ActivityType.watching, name="Black Mirror"),
+    discord.Activity(type=discord.ActivityType.playing, name="Minecraft: Exploring the Nether")
 ]
 
 discord_client = commands.Bot(
@@ -65,32 +101,24 @@ reaction_semaphore = asyncio.Semaphore(MAX_CONCURRENT_REACTIONS)
 async def process_reaction_queue():
     while True:
         if not reaction_queue:
-            logging.debug("Reaction queue is empty, sleeping for 0.1s")
             await asyncio.sleep(0.1)
             continue
-        logging.info(f"Processing reaction queue, current length: {len(reaction_queue)}")
         message, emoji = reaction_queue.popleft()
-        logging.info(f"Dequeued reaction: emoji={emoji}, message ID={message.id}, channel={message.channel}")
         async with reaction_semaphore:
             try:
-                # Validate the message before reacting
-                message = await message.channel.fetch_message(message.id)
-                logging.info(f"Attempting to add reaction {emoji} to message ID {message.id}")
                 await message.add_reaction(emoji)
-                logging.info(f"Successfully reacted with {emoji} to message ID {message.id}")
+                logging.info(f"Reacted with {emoji} to message ID {message.id}")
                 await asyncio.sleep(0.5)
-            except discord.NotFound:
-                logging.warning(f"Message ID {message.id} not found, skipping reaction")
             except HTTPException as e:
                 if e.code == 429:
                     retry_after = e.retry_after or 1.0
-                    logging.warning(f"Rate limit hit while reacting to message ID {message.id}, retrying after {retry_after}s")
+                    logging.warning(f"Rate limit hit, retrying after {retry_after}s")
                     reaction_queue.appendleft((message, emoji))
                     await asyncio.sleep(retry_after)
                 else:
-                    logging.error(f"HTTP error reacting to message ID {message.id}: {e}")
+                    logging.error(f"Error reacting to message: {e}")
             except Exception as e:
-                logging.error(f"Unexpected error reacting to message ID {message.id}: {e}")
+                logging.error(f"Unexpected error reacting to message: {e}")
 
 # Background task for rotating status
 async def rotate_status():
@@ -136,13 +164,13 @@ def load_commands():
             else:
                 logging.warning(f"Module {module_name} has no setup function, skipping.")
 
-# Load cogs (async)
+# Load cogs (now async)
 async def load_cogs():
     for filename in os.listdir("./cogs"):
         if filename.endswith(".py"):
             module_name = filename[:-3]
             logging.info(f"Loading cog: {module_name}")
-            await discord_client.load_extension(f"cogs.{module_name}")
+            await discord_client.load_extension(f"cogs.{module_name}")  # Now awaited
 
 @discord_client.event
 async def on_connect():
@@ -158,13 +186,9 @@ async def on_ready():
     logging.info('------')
     await discord_client.change_presence(activity=random.choice(status_rotation))
     load_commands()
-    await load_cogs()
+    await load_cogs()  # Now awaited
     asyncio.create_task(rotate_status())
-    try:
-        task = asyncio.create_task(process_reaction_queue())
-        logging.info("Started process_reaction_queue task")
-    except Exception as e:
-        logging.error(f"Error starting process_reaction_queue task: {e}")
+    asyncio.create_task(process_reaction_queue())
     asyncio.create_task(cleanup_conversation_history())
 
 @discord_client.event
