@@ -20,6 +20,7 @@ def setup(client, cfg):
             "**Available Commands:**\n"
             "!ping - Check if glorp is alive.\n"
             "!votekick <@user> - Start a vote to kick a user (needs 4 votes).\n"
+            "!tldr - Summarize the last 15 messages in this channel.\n"
             "!8ball <question> - Ask the magic 8-ball a question.\n"
             "!coinflip - Flip a coin.\n"
             "!joke - Hear an alien joke.\n"
@@ -63,12 +64,57 @@ def setup(client, cfg):
         vote_data = active_votes.get(vote_message.id)
         if vote_data:
             vote_count = len(vote_data["votes"])
-            if vote_count >= 1:
+            if vote_count >= 4:
                 await ctx.send(f"{target_user.mention} is too powerful to be kicked! 💪")
             else:
                 await ctx.send(f"Vote kick failed: not enough votes to kick {target_user.mention}! ({vote_count}/4 votes)")
             # Clean up
             del active_votes[vote_message.id]
+
+    @client.command(name="tldr")
+    async def tldr(ctx):
+        try:
+            # Fetch the last 15 messages in the channel (excluding the command message itself)
+            messages = []
+            async for message in ctx.channel.history(limit=16):  # 16 to account for the command message
+                if message.id != ctx.message.id:  # Skip the !tldr command message
+                    messages.append(message)
+            messages = messages[:15]  # Ensure we only take the last 15 messages
+
+            if not messages:
+                await ctx.reply("There are no messages to summarize in this channel!")
+                return
+
+            # Format the messages into a string
+            formatted_messages = []
+            for msg in reversed(messages):  # Reverse to show oldest to newest
+                content = msg.content if msg.content else "[No text content]"
+                formatted_messages.append(f"{msg.author.name}: {content}")
+            
+            message_history = "\n".join(formatted_messages)
+
+            # Create a prompt for the AI to summarize the messages
+            prompt = (
+                "Please provide a concise summary (TLDR) of the following conversation. "
+                "Focus on the main topics discussed, ignoring minor details or off-topic comments:\n\n"
+                f"{message_history}"
+            )
+
+            # Get the AIChat cog to generate the summary
+            ai_chat_cog = client.get_cog("AIChat")
+            if not ai_chat_cog:
+                await ctx.reply("⚠ AI broken. Idk ask Jake.")
+                return
+
+            # Use the AIChat cog's handle_ai_chat method to generate the summary
+            channel_id = ctx.channel.id
+            past_history = []  # We don't need past history for a TLDR summary
+            async with ctx.typing():
+                await ai_chat_cog.handle_ai_chat(ctx.message, channel_id, prompt, past_history)
+
+        except Exception as e:
+            logging.error(f"Error in tldr command: {e}")
+            await ctx.reply(" An error occurred womp womp.")
 
     @client.event
     async def on_reaction_add(reaction, user):
